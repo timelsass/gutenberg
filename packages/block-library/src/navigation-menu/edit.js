@@ -23,8 +23,8 @@ import useBlockNavigator from './use-block-navigator';
 
 function NavigationMenu( {
 	attributes,
-	setAttributes,
 	clientId,
+	setAttributes,
 } ) {
 	const { navigatorToolbarButton, navigatorModal } = useBlockNavigator( clientId );
 
@@ -53,6 +53,7 @@ function NavigationMenu( {
 			<div className="wp-block-navigation-menu">
 				<InnerBlocks
 					allowedBlocks={ [ 'core/navigation-menu-item' ] }
+					horizontalMover={ true }
 				/>
 			</div>
 		</Fragment>
