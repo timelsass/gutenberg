@@ -68,6 +68,37 @@ class BlockList extends Component {
 		window.removeEventListener( 'mousemove', this.setLastClientY );
 	}
 
+	componentDidUpdate() {
+		const {
+			hasMultiSelection,
+			selectionStart,
+			selectionEnd,
+			blockClientIds,
+		} = this.props;
+
+		if ( ! hasMultiSelection ) {
+			return;
+		}
+
+		const startIndex = blockClientIds.indexOf( selectionStart );
+
+		// The selected block is not in this block list.
+		if ( startIndex === -1 ) {
+			return;
+		}
+
+		const startNode = document.querySelector( `[data-block="${ selectionStart }"]` );
+		const endNode = document.querySelector( `[data-block="${ selectionEnd }"]` );
+		const selection = window.getSelection();
+		const range = document.createRange();
+
+		range.setStartBefore( startNode );
+		range.setEndAfter( endNode );
+
+		selection.removeAllRanges();
+		selection.addRange( range );
+	}
+
 	setLastClientY( { clientY } ) {
 		this.lastClientY = clientY;
 	}

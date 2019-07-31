@@ -247,36 +247,6 @@
  * Cross-block selection
  */
 
-.block-editor-block-list__layout .block-editor-block-list__block {
-	::-moz-selection {
-		background-color: $blue-medium-highlight;
-	}
-
-	::selection {
-		background-color: $blue-medium-highlight;
-	}
-
-	// Selection style for multiple blocks.
-	&.is-multi-selected *::selection {
-		background-color: transparent;
-	}
-
-	&.is-multi-selected .block-editor-block-list__block-edit::before {
-		background: $blue-medium-highlight;
-
-		// Use opacity to work in various editor styles.
-		mix-blend-mode: multiply;
-
-		// Collapse extra vertical padding on selection.
-		top: -$block-padding;
-		bottom: -$block-padding;
-
-		.is-dark-theme & {
-			mix-blend-mode: soft-light;
-		}
-	}
-}
-
 
 /**
  * Block styles and alignments
