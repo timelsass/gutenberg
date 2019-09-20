@@ -456,6 +456,7 @@ const RichTextContainer = compose( [
 			getSettings,
 			didAutomaticChange,
 			isMultiSelecting,
+			hasMultiSelection,
 		} = select( 'core/block-editor' );
 
 		const selectionStart = getSelectionStart();
@@ -477,7 +478,7 @@ const RichTextContainer = compose( [
 			selectionEnd: isSelected ? selectionEnd.offset : undefined,
 			isSelected,
 			didAutomaticChange: didAutomaticChange(),
-			isMultiSelecting: isMultiSelecting(),
+			isMultiSelecting: isMultiSelecting() || hasMultiSelection(),
 		};
 	} ),
 	withDispatch( ( dispatch, {
