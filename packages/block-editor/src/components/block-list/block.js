@@ -96,11 +96,11 @@ function BlockListBlock( {
 	toggleSelection,
 	onShiftSelection,
 	onSelectionStart,
-	onSelectionEnd,
 	animateOnChange,
 	enableAnimation,
 	isNavigationMode,
 	enableNavigationMode,
+	isMultiSelecting,
 } ) {
 	// Random state used to rerender the component if needed, ideally we don't need this
 	const [ , updateRerenderState ] = useState( {} );
@@ -366,7 +366,6 @@ function BlockListBlock( {
 	};
 
 	const onMouseUp = () => {
-		onSelectionEnd( clientId );
 		isPointerDown.current = false;
 	};
 
@@ -415,9 +414,10 @@ function BlockListBlock( {
 		! showEmptyBlockSideInserter &&
 		! isPartOfMultiSelection &&
 		! isTypingWithinBlock;
-	const shouldShowBreadcrumb =
+	const shouldShowBreadcrumb = ! isMultiSelecting && (
 		( isSelected && isNavigationMode ) ||
-		( ! isNavigationMode && ! isFocusMode && isHovered && ! isEmptyDefaultBlock );
+		( ! isNavigationMode && ! isFocusMode && isHovered && ! isEmptyDefaultBlock )
+	);
 	const shouldShowContextualToolbar =
 		! isNavigationMode &&
 		! hasFixedToolbar &&
@@ -430,9 +430,12 @@ function BlockListBlock( {
 
 	// Insertion point can only be made visible if the block is at the
 	// the extent of a multi-selection, or not in a multi-selection.
-	const shouldShowInsertionPoint =
+	const shouldShowInsertionPoint = ! isMultiSelecting && (
 		( isPartOfMultiSelection && isFirstMultiSelected ) ||
-		! isPartOfMultiSelection;
+		! isPartOfMultiSelection
+	);
+
+	const shouldRenderDropzone = shouldShowInsertionPoint;
 
 	// The wp-block className is important for editor styles.
 	// Generate the wrapper class names handling the different states of the block.
@@ -519,10 +522,10 @@ function BlockListBlock( {
 					rootClientId={ rootClientId }
 				/>
 			) }
-			<BlockDropZone
+			{ shouldRenderDropzone && <BlockDropZone
 				clientId={ clientId }
 				rootClientId={ rootClientId }
-			/>
+			/> }
 			{ isFirstMultiSelected && (
 				<BlockMultiControls rootClientId={ rootClientId } />
 			) }

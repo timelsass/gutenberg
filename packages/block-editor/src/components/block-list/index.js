@@ -41,6 +41,7 @@ class BlockList extends Component {
 
 		this.onSelectionStart = this.onSelectionStart.bind( this );
 		this.onSelectionEnd = this.onSelectionEnd.bind( this );
+		this.setSelection = this.setSelection.bind( this );
 	}
 
 	componentDidUpdate() {
@@ -84,6 +85,11 @@ class BlockList extends Component {
 		selection.addRange( range );
 	}
 
+	componentWillUnmount() {
+		window.removeEventListener( 'mouseup', this.onSelectionEnd );
+		window.cancelAnimationFrame( this.rafId );
+	}
+
 	/**
 	 * Binds event handlers to the document for tracking a pending multi-select
 	 * in response to a mousedown event occurring in a rendered block.
@@ -95,21 +101,47 @@ class BlockList extends Component {
 			return;
 		}
 
-		this.onSelectionStart.clientId = clientId;
+		this.startClientId = clientId;
 		this.props.onStartMultiSelect();
+		window.addEventListener( 'mouseup', this.onSelectionEnd );
 	}
 
 	/**
 	 * Handles a mouseup event to end the current cursor multi-selection.
-	 *
-	 * @param {string} clientId Client ID of block where mouseup occurred.
 	 */
-	onSelectionEnd( clientId ) {
+	onSelectionEnd() {
+		window.removeEventListener( 'mouseup', this.onSelectionEnd );
+
 		if ( ! this.props.isMultiSelecting ) {
 			return;
 		}
 
-		this.props.onMultiSelect( this.onSelectionStart.clientId, clientId );
+		this.rafId = window.requestAnimationFrame( this.setSelection );
+	}
+
+	setSelection() {
+		const selection = window.getSelection();
+
+		if ( ! selection.rangeCount ) {
+			this.props.onStopMultiSelect();
+			return;
+		}
+
+		const { startContainer, endContainer } = selection.getRangeAt( 0 );
+		const startEl = document.querySelector( `[data-block="${ this.startClientId }"]` );
+		let endEl = startEl.contains( startContainer ) ? endContainer : startContainer;
+		let clientId;
+
+		do {
+			endEl = endEl.parentElement;
+		} while ( endEl && ! ( clientId = endEl.getAttribute( 'data-block' ) ) );
+
+		if ( this.startClientId === clientId ) {
+			this.props.onStopMultiSelect();
+			return;
+		}
+
+		this.props.onMultiSelect( this.startClientId, clientId );
 		this.props.onStopMultiSelect();
 	}
 
@@ -124,6 +156,7 @@ class BlockList extends Component {
 			hasMultiSelection,
 			renderAppender,
 			enableAnimation,
+			isMultiSelecting,
 		} = this.props;
 
 		return (
@@ -148,8 +181,8 @@ class BlockList extends Component {
 								rootClientId={ rootClientId }
 								clientId={ clientId }
 								onSelectionStart={ this.onSelectionStart }
-								onSelectionEnd={ this.onSelectionEnd }
 								isDraggable={ isDraggable }
+								isMultiSelecting={ isMultiSelecting }
 
 								// This prop is explicitely computed and passed down
 								// to avoid being impacted by the async mode
