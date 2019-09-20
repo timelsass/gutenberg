@@ -35,6 +35,25 @@ const forceSyncUpdates = ( WrappedComponent ) => ( props ) => {
 	);
 };
 
+function getDeepestNode( node, type ) {
+	const child = type === 'start' ? 'firstChild' : 'lastChild';
+	const sibling = type === 'start' ? 'nextSibling' : 'previousSibling';
+
+	while ( node[ child ] ) {
+		node = node[ child ];
+
+		while (
+			node.nodeType === node.TEXT_NODE &&
+			/^\s*$/.test( node.data ) &&
+			node[ sibling ]
+		) {
+			node = node[ sibling ];
+		}
+	}
+
+	return node;
+}
+
 class BlockList extends Component {
 	constructor( props ) {
 		super( props );
@@ -70,13 +89,8 @@ class BlockList extends Component {
 		const selection = window.getSelection();
 		const range = document.createRange();
 
-		while ( startNode.firstChild ) {
-			startNode = startNode.firstChild;
-		}
-
-		while ( endNode.lastChild ) {
-			endNode = endNode.lastChild;
-		}
+		startNode = getDeepestNode( startNode, 'start' );
+		endNode = getDeepestNode( endNode, 'end' );
 
 		range.setStartBefore( startNode );
 		range.setEndAfter( endNode );
