@@ -374,6 +374,8 @@ function BlockListBlock( {
 			onSelectionStart( clientId );
 		}
 
+		hideHoverEffects();
+
 		isPointerDown.current = false;
 	};
 
