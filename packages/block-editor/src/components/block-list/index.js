@@ -46,26 +46,36 @@ class BlockList extends Component {
 	componentDidUpdate() {
 		const {
 			hasMultiSelection,
-			selectionStart,
-			selectionEnd,
 			blockClientIds,
+			multiSelectedBlockClientIds,
 		} = this.props;
 
 		if ( ! hasMultiSelection ) {
 			return;
 		}
 
-		const startIndex = blockClientIds.indexOf( selectionStart );
+		const { length } = multiSelectedBlockClientIds;
+		const start = multiSelectedBlockClientIds[ 0 ];
+		const end = multiSelectedBlockClientIds[ length - 1 ];
+		const startIndex = blockClientIds.indexOf( start );
 
 		// The selected block is not in this block list.
 		if ( startIndex === -1 ) {
 			return;
 		}
 
-		const startNode = document.querySelector( `[data-block="${ selectionStart }"]` );
-		const endNode = document.querySelector( `[data-block="${ selectionEnd }"]` );
+		let startNode = document.querySelector( `[data-block="${ start }"]` );
+		let endNode = document.querySelector( `[data-block="${ end }"]` );
 		const selection = window.getSelection();
 		const range = document.createRange();
+
+		while ( startNode.firstChild ) {
+			startNode = startNode.firstChild;
+		}
+
+		while ( endNode.lastChild ) {
+			endNode = endNode.lastChild;
+		}
 
 		range.setStartBefore( startNode );
 		range.setEndAfter( endNode );
