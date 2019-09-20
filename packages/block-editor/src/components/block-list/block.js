@@ -63,7 +63,6 @@ const preventDrag = ( event ) => {
 };
 
 function BlockListBlock( {
-	blockRef,
 	mode,
 	isFocusMode,
 	hasFixedToolbar,
@@ -97,6 +96,7 @@ function BlockListBlock( {
 	toggleSelection,
 	onShiftSelection,
 	onSelectionStart,
+	onSelectionEnd,
 	animateOnChange,
 	enableAnimation,
 	isNavigationMode,
@@ -108,9 +108,6 @@ function BlockListBlock( {
 
 	// Reference of the wrapper
 	const wrapper = useRef( null );
-	useEffect( () => {
-		blockRef( wrapper.current, clientId );
-	}, [] );
 
 	// Reference to the block edit node
 	const blockNodeRef = useRef();
@@ -332,12 +329,14 @@ function BlockListBlock( {
 		}
 	};
 
+	const isPointerDown = useRef( false );
+
 	/**
 	 * Begins tracking cursor multi-selection when clicking down within block.
 	 *
 	 * @param {MouseEvent} event A mousedown event.
 	 */
-	const onPointerDown = ( event ) => {
+	const onMouseDown = ( event ) => {
 		// Not the main button.
 		// https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/button
 		if ( event.button !== 0 ) {
@@ -353,7 +352,7 @@ function BlockListBlock( {
 		// Avoid triggering multi-selection if we click toolbars/inspectors
 		// and all elements that are outside the Block Edit DOM tree.
 		} else if ( blockNodeRef.current.contains( event.target ) ) {
-			onSelectionStart( clientId );
+			isPointerDown.current = true;
 
 			// Allow user to escape out of a multi-selection to a singular
 			// selection of a block via click. This is handled here since
@@ -364,6 +363,19 @@ function BlockListBlock( {
 				onSelect();
 			}
 		}
+	};
+
+	const onMouseUp = () => {
+		onSelectionEnd( clientId );
+		isPointerDown.current = false;
+	};
+
+	const onMouseLeave = () => {
+		if ( isPointerDown.current ) {
+			onSelectionStart( clientId );
+		}
+
+		isPointerDown.current = false;
 	};
 
 	const selectOnOpen = ( open ) => {
@@ -431,6 +443,7 @@ function BlockListBlock( {
 			'is-selected': shouldAppearSelected,
 			'is-navigate-mode': isNavigationMode,
 			'is-multi-selected': isPartOfMultiSelection,
+			'is-multi-selected-first': isFirstMultiSelected,
 			'is-hovered': shouldAppearHovered,
 			'is-reusable': isReusableBlock( blockType ),
 			'is-dragging': isDragging,
@@ -558,7 +571,9 @@ function BlockListBlock( {
 				<IgnoreNestedEvents
 					ref={ blockNodeRef }
 					onDragStart={ preventDrag }
-					onMouseDown={ onPointerDown }
+					onMouseDown={ onMouseDown }
+					onMouseUp={ onMouseUp }
+					onMouseLeave={ onMouseLeave }
 					data-block={ clientId }
 				>
 					<BlockCrashBoundary onError={ onBlockError }>
