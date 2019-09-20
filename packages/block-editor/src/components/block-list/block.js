@@ -526,10 +526,10 @@ function BlockListBlock( {
 				clientId={ clientId }
 				rootClientId={ rootClientId }
 			/> }
-			{ isFirstMultiSelected && (
-				<BlockMultiControls rootClientId={ rootClientId } />
-			) }
 			<div className="editor-block-list__block-edit block-editor-block-list__block-edit">
+				{ isFirstMultiSelected && (
+					<BlockMultiControls rootClientId={ rootClientId } />
+				) }
 				{ shouldRenderMovers && (
 					<BlockMover
 						clientIds={ clientId }
