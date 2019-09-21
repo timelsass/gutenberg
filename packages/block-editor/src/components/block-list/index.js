@@ -118,6 +118,20 @@ class BlockList extends Component {
 		this.startClientId = clientId;
 		this.props.onStartMultiSelect();
 		window.addEventListener( 'mouseup', this.onSelectionEnd );
+
+		// Removing the contenteditable attributes within the block editor is
+		// essential for selection to work across editable areas. The edible
+		// hosts are removed, allowing selection to be extended outside the
+		// DOM element. `onStartMultiSelect` sets a flag in the store so the
+		// rich text components are updated, but the rerender may happen very
+		// slowly, especially in Safari for the blocks that are asynchonously
+		// rendered. To ensure the browser instantly removes the selection
+		// boundaries, we remove the contenteditable attributes manually.
+		Array.from(
+			document.querySelectorAll( '.block-editor-rich-text__editable' )
+		).forEach( ( node ) => {
+			node.removeAttribute( 'contenteditable' );
+		} );
 	}
 
 	/**
