@@ -6,7 +6,7 @@ import classnames from 'classnames';
 /**
  * WordPress dependencies
  */
-import { Component } from '@wordpress/element';
+import { Component, createRef } from '@wordpress/element';
 import {
 	withSelect,
 	withDispatch,
@@ -35,6 +35,13 @@ const forceSyncUpdates = ( WrappedComponent ) => ( props ) => {
 	);
 };
 
+/**
+ * Returns for the deepest node at the start or end of a container node. Ignores
+ * any text nodes that only contain HTML formatting whitespace.
+ *
+ * @param {Element} node Container to search.
+ * @param {string} type 'start' or 'end'.
+ */
 function getDeepestNode( node, type ) {
 	const child = type === 'start' ? 'firstChild' : 'lastChild';
 	const sibling = type === 'start' ? 'nextSibling' : 'previousSibling';
@@ -44,7 +51,7 @@ function getDeepestNode( node, type ) {
 
 		while (
 			node.nodeType === node.TEXT_NODE &&
-			/^\s*$/.test( node.data ) &&
+			/^[ \t\n]*$/.test( node.data ) &&
 			node[ sibling ]
 		) {
 			node = node[ sibling ];
@@ -61,12 +68,19 @@ class BlockList extends Component {
 		this.onSelectionStart = this.onSelectionStart.bind( this );
 		this.onSelectionEnd = this.onSelectionEnd.bind( this );
 		this.setSelection = this.setSelection.bind( this );
+
+		this.ref = createRef();
 	}
 
+	/**
+	 * When the component updates, and there is multi selection, we need to
+	 * select the entire block contents.
+	 */
 	componentDidUpdate() {
 		const {
 			hasMultiSelection,
 			blockClientIds,
+			// These must be in the right DOM order.
 			multiSelectedBlockClientIds,
 		} = this.props;
 
@@ -84,11 +98,18 @@ class BlockList extends Component {
 			return;
 		}
 
-		let startNode = document.querySelector( `[data-block="${ start }"]` );
-		let endNode = document.querySelector( `[data-block="${ end }"]` );
+		let startNode = this.ref.current.querySelector(
+			`[data-block="${ start }"]`
+		);
+		let endNode = this.ref.current.querySelector(
+			`[data-block="${ end }"]`
+		);
+
 		const selection = window.getSelection();
 		const range = document.createRange();
 
+		// The most stable way to select the whole block contents is to start
+		// and end at the deepest points.
 		startNode = getDeepestNode( startNode, 'start' );
 		endNode = getDeepestNode( endNode, 'end' );
 
@@ -117,6 +138,10 @@ class BlockList extends Component {
 
 		this.startClientId = clientId;
 		this.props.onStartMultiSelect();
+
+		// `onSelectionStart` is called after `mousedown` and `mouseleave`
+		// (from a block). The selection ends when `mouseup` happens anywhere
+		// in the window.
 		window.addEventListener( 'mouseup', this.onSelectionEnd );
 
 		// Removing the contenteditable attributes within the block editor is
@@ -128,16 +153,17 @@ class BlockList extends Component {
 		// rendered. To ensure the browser instantly removes the selection
 		// boundaries, we remove the contenteditable attributes manually.
 		Array.from(
-			document.querySelectorAll( '.block-editor-rich-text__editable' )
+			this.ref.current.querySelectorAll( '.rich-text' )
 		).forEach( ( node ) => {
 			node.removeAttribute( 'contenteditable' );
 		} );
 	}
 
 	/**
-	 * Handles a mouseup event to end the current cursor multi-selection.
+	 * Handles a mouseup event to end the current mouse multi-selection.
 	 */
 	onSelectionEnd() {
+		// Equivalent to attaching the listener once.
 		window.removeEventListener( 'mouseup', this.onSelectionEnd );
 
 		if ( ! this.props.isMultiSelecting ) {
@@ -150,20 +176,34 @@ class BlockList extends Component {
 	setSelection() {
 		const selection = window.getSelection();
 
+		// If no selection is found, end multi selection.
 		if ( ! selection.rangeCount ) {
 			this.props.onStopMultiSelect();
 			return;
 		}
 
 		const { startContainer, endContainer } = selection.getRangeAt( 0 );
-		const startEl = document.querySelector( `[data-block="${ this.startClientId }"]` );
-		let endEl = startEl.contains( startContainer ) ? endContainer : startContainer;
+		const startEl = this.ref.current.querySelector(
+			`[data-block="${ this.startClientId }"]`
+		);
+
+		// We need the container where mouse selection is released, not where
+		// it is initiated pressed.
+		let endEl = startEl.contains( startContainer ) ?
+			endContainer :
+			startContainer;
 		let clientId;
 
+		// Find the client ID of the block where the selection ends.
 		do {
 			endEl = endEl.parentElement;
-		} while ( endEl && ! ( clientId = endEl.getAttribute( 'data-block' ) ) );
+		} while (
+			endEl &&
+			! ( clientId = endEl.getAttribute( 'data-block' ) )
+		);
 
+		// If the final selection doesn't leave the block, there is no multi
+		// selection.
 		if ( this.startClientId === clientId ) {
 			this.props.onStopMultiSelect();
 			return;
@@ -188,12 +228,13 @@ class BlockList extends Component {
 		} = this.props;
 
 		return (
-			<div className={
-				classnames(
+			<div
+				ref={ this.ref }
+				className={ classnames(
 					'editor-block-list__layout block-editor-block-list__layout',
 					className
-				)
-			}>
+				) }
+			>
 				{ blockClientIds.map( ( clientId, index ) => {
 					const isBlockInSelection = hasMultiSelection ?
 						multiSelectedBlockClientIds.includes( clientId ) :

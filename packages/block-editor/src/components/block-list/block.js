@@ -448,7 +448,6 @@ function BlockListBlock( {
 			'is-selected': shouldAppearSelected,
 			'is-navigate-mode': isNavigationMode,
 			'is-multi-selected': isPartOfMultiSelection,
-			'is-multi-selected-first': isFirstMultiSelected,
 			'is-hovered': shouldAppearHovered,
 			'is-reusable': isReusableBlock( blockType ),
 			'is-dragging': isDragging,
