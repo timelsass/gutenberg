@@ -3,7 +3,6 @@
  */
 import {
 	clickBlockAppender,
-	insertBlock,
 	createNewPost,
 	pressKeyWithModifier,
 	pressKeyTimes,
@@ -86,27 +85,6 @@ async function testNativeSelection() {
 describe( 'Multi-block selection', () => {
 	beforeEach( async () => {
 		await createNewPost();
-	} );
-
-	it.skip( 'Should select/unselect multiple blocks', async () => {
-
-		// Multiselect via Shift + click
-		await page.mouse.move( 200, 300 );
-		await page.click( firstBlockSelector );
-		await page.keyboard.down( 'Shift' );
-		await page.click( thirdBlockSelector );
-		await page.keyboard.up( 'Shift' );
-
-		// Verify selection
-		await expectMultiSelected( blocks, true );
-		await testNativeSelection();
-
-		// Unselect
-		await page.click( secondBlockSelector );
-
-		// No selection
-		await expectMultiSelected( blocks, false );
-		await testNativeSelection();
 	} );
 
 	it( 'should select with double ctrl+a and speak', async () => {
@@ -267,5 +245,51 @@ describe( 'Multi-block selection', () => {
 		await page.keyboard.press( 'Escape' );
 
 		expect( await getSelectedFlatIndices() ).toEqual( [] );
+	} );
+
+	it( 'should select with shift + click', async () => {
+		await clickBlockAppender();
+		await page.keyboard.type( '1' );
+		await page.keyboard.press( 'Enter' );
+		await page.keyboard.type( '2' );
+		await page.keyboard.down( 'Shift' );
+		await page.click( '.wp-block-paragraph' );
+		await page.keyboard.up( 'Shift' );
+
+		await testNativeSelection();
+		expect( await getSelectedFlatIndices() ).toEqual( [ 1, 2 ] );
+	} );
+
+	it( 'should select by dragging', async () => {
+		await clickBlockAppender();
+		await page.keyboard.type( '1' );
+		await page.keyboard.press( 'Enter' );
+		await page.keyboard.type( '2' );
+		await page.keyboard.press( 'ArrowUp' );
+
+		const [ coord1, coord2 ] = await page.evaluate( () => {
+			const elements = Array.from( document.querySelectorAll( '.wp-block-paragraph' ) );
+			const rect1 = elements[ 0 ].getBoundingClientRect();
+			const rect2 = elements[ 1 ].getBoundingClientRect();
+			return [
+				{
+					x: rect1.x + ( rect1.width / 2 ),
+					y: rect1.y + ( rect1.height / 2 ),
+				},
+				{
+					x: rect2.x + ( rect2.width / 2 ),
+					y: rect2.y + ( rect2.height / 2 ),
+				},
+			];
+		} );
+
+		await page.mouse.move( coord1.x, coord1.y );
+		await page.mouse.down();
+		await page.mouse.move( coord2.x, coord2.y, { steps: 10 } );
+		await page.mouse.up();
+		await page.evaluate( () => new Promise( window.requestAnimationFrame ) );
+
+		expect( await getSelectedFlatIndices() ).toEqual( [ 1, 2 ] );
+		await testNativeSelection();
 	} );
 } );
