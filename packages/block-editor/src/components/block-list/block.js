@@ -213,8 +213,6 @@ function BlockListBlock( {
 				! blockNodeRef.current.contains( endContainer )
 			) {
 				selection.removeAllRanges();
-				wrapper.current.focus();
-				return;
 			}
 		}
 
