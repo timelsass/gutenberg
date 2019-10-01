@@ -13,6 +13,7 @@ import { withSelect } from '@wordpress/data';
 import {
 	CheckboxControl,
 	PanelBody,
+	Spinner,
 	Toolbar,
 } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
@@ -27,6 +28,7 @@ function NavigationMenu( {
 	setAttributes,
 	clientId,
 	pages,
+	isRequesting,
 } ) {
 	const { navigatorToolbarButton, navigatorModal } = useBlockNavigator( clientId );
 	let defaultMenuItems = false;
@@ -61,11 +63,16 @@ function NavigationMenu( {
 				</PanelBody>
 			</InspectorControls>
 			<div className="wp-block-navigation-menu">
-				<InnerBlocks
-					template={ defaultMenuItems ? defaultMenuItems : null }
-					allowedBlocks={ [ 'core/navigation-menu-item' ] }
-					renderAppender={ InnerBlocks.ButtonBlockAppender }
-				/>
+				{ isRequesting &&
+					<Spinner />
+				}
+				{ pages &&
+					<InnerBlocks
+						template={ defaultMenuItems ? defaultMenuItems : null }
+						allowedBlocks={ [ 'core/navigation-menu-item' ] }
+						renderAppender={ InnerBlocks.ButtonBlockAppender }
+					/>
+				}
 			</div>
 		</Fragment>
 	);
@@ -73,6 +80,7 @@ function NavigationMenu( {
 
 export default withSelect( ( select ) => {
 	const { getEntityRecords } = select( 'core' );
+	const { isResolving } = select( 'core/data' );
 	const filterDefaultPages = {
 		parent: 0,
 		order: 'asc',
@@ -80,6 +88,7 @@ export default withSelect( ( select ) => {
 	};
 	return {
 		pages: getEntityRecords( 'postType', 'page', filterDefaultPages ),
+		isRequesting: isResolving( 'core', 'getEntityRecords', [ 'postType', 'page', filterDefaultPages ] ),
 	};
 } )( NavigationMenu );
 
