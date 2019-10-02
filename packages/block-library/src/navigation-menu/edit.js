@@ -53,7 +53,7 @@ function NavigationMenu( {
 			<div className="wp-block-navigation-menu">
 				<InnerBlocks
 					allowedBlocks={ [ 'core/navigation-menu-item' ] }
-					horizontalMover={ true }
+					horizontalMover
 				/>
 			</div>
 		</Fragment>
