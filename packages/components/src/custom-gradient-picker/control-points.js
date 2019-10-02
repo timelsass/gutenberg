@@ -2,7 +2,7 @@
 /**
  * External dependencies
  */
-import { compact, map } from 'lodash';
+import { map } from 'lodash';
 import classnames from 'classnames';
 
 /**
@@ -17,12 +17,12 @@ import { __ } from '@wordpress/i18n';
 import Button from '../button';
 import ColorPicker from '../color-picker';
 import Dropdown from '../dropdown';
-import { serializeGradient, serializeGradientColor } from './serializer';
-import { getGradientAbsolutePosition, getGradientRelativePosition, tinyColorRgbToGradientColorStop } from './utils';
+import { serializeGradientColor, serializeGradientPosition } from './serializer';
+import { getHorizontalRelativeGradientPosition, getGradientWithColorAtIndexChanged, getGradientWithPositionAtIndexChanged, getGradientWithControlPointRemoved } from './utils';
 import {
-	MINIMUM_ABSOLUTE_LEFT_POSITION,
 	GRADIENT_MARKERS_WIDTH,
 	MINIMUM_SIGNIFICANT_MOVE,
+	COLOR_POPOVER_PROPS,
 } from './constants';
 
 export function useMarkerPoints( parsedGradient, maximumAbsolutePositionValue ) {
@@ -31,38 +31,36 @@ export function useMarkerPoints( parsedGradient, maximumAbsolutePositionValue ) 
 			if ( ! parsedGradient ) {
 				return [];
 			}
-			return compact(
-				map( parsedGradient.colorStops, ( colorStop ) => {
-					if ( ! colorStop || ! colorStop.length || colorStop.length.type !== '%' ) {
-						return null;
-					}
-					return {
-						color: serializeGradientColor( colorStop ),
-						absolutePosition: getGradientAbsolutePosition( colorStop.length.value, maximumAbsolutePositionValue, MINIMUM_ABSOLUTE_LEFT_POSITION ),
-						position: colorStop.length.value,
-					};
-				} )
-			);
+			return map( parsedGradient.colorStops, ( colorStop ) => {
+				if ( ! colorStop || ! colorStop.length || colorStop.length.type !== '%' ) {
+					return null;
+				}
+				return {
+					color: serializeGradientColor( colorStop ),
+					position: serializeGradientPosition( colorStop.length ),
+					positionValue: parseInt( colorStop.length.value ),
+				};
+			} );
 		},
 		[ parsedGradient, maximumAbsolutePositionValue ]
 	);
 }
 
 export function ControlPoints( {
-	gradientPickerDimensions,
+	gradientPickerDomRef,
 	ignoreMarkerPosition,
 	markerPoints,
 	onChange,
 	parsedGradient,
-	setIsInserterMoveEnabled,
+	setIsInsertPointMoveEnabled,
 } ) {
 	const controlPointMoveState = useRef();
 	const controlPointMove = useCallback(
 		( event ) => {
-			const relativePosition = getGradientRelativePosition(
-				event.clientX - gradientPickerDimensions.x - ( GRADIENT_MARKERS_WIDTH / 2 ),
-				gradientPickerDimensions.maxPosition,
-				MINIMUM_ABSOLUTE_LEFT_POSITION
+			const relativePosition = getHorizontalRelativeGradientPosition(
+				event.clientX,
+				gradientPickerDomRef.current,
+				GRADIENT_MARKERS_WIDTH,
 			);
 			const { parsedGradient: referenceParsedGradient, position, significantMoveHappened } = controlPointMoveState.current;
 			if ( ! significantMoveHappened ) {
@@ -72,28 +70,10 @@ export function ControlPoints( {
 				}
 			}
 			onChange(
-				serializeGradient(
-					{
-						...referenceParsedGradient,
-						colorStops: referenceParsedGradient.colorStops.map(
-							( colorStop, colorStopIndex ) => {
-								if ( colorStopIndex !== position ) {
-									return colorStop;
-								}
-								return {
-									...colorStop,
-									length: {
-										...colorStop.length,
-										value: relativePosition.toString(),
-									},
-								};
-							}
-						),
-					}
-				)
+				getGradientWithPositionAtIndexChanged( referenceParsedGradient, position, relativePosition )
 			);
 		},
-		[ controlPointMoveState, onChange, gradientPickerDimensions ]
+		[ controlPointMoveState, onChange, gradientPickerDomRef ]
 	);
 
 	const unbindEventListeners = useCallback(
@@ -124,14 +104,20 @@ export function ControlPoints( {
 		},
 		[ parsedGradient, controlPointMove, unbindEventListeners, controlPointMoveState ]
 	);
+
+	const enableInsertPointMove = useCallback(
+		() => {
+			setIsInsertPointMoveEnabled( true );
+		},
+		[ setIsInsertPointMoveEnabled ]
+	);
+
 	return markerPoints.map(
 		( point, index ) => (
-			ignoreMarkerPosition !== point.position && (
+			point && ignoreMarkerPosition !== point.positionValue && (
 				<Dropdown
 					key={ index }
-					onClose={ () => {
-						setIsInserterMoveEnabled( true );
-					} }
+					onClose={ enableInsertPointMove }
 					renderToggle={ ( { isOpen, onToggle } ) => (
 						<Button
 							onClick={ () => {
@@ -139,7 +125,7 @@ export function ControlPoints( {
 									return;
 								}
 								onToggle();
-								setIsInserterMoveEnabled( false );
+								setIsInsertPointMoveEnabled( false );
 							} }
 							onMouseDown={ controlPointMouseDown[ index ] }
 							aria-expanded={ isOpen }
@@ -150,7 +136,7 @@ export function ControlPoints( {
 								)
 							}
 							style={ {
-								left: !! point.absolutePosition ? point.absolutePosition : undefined,
+								left: point.position,
 							} }
 						/>
 					) }
@@ -160,22 +146,7 @@ export function ControlPoints( {
 								color={ point.color }
 								onChangeComplete={ ( { rgb } ) => {
 									onChange(
-										serializeGradient(
-											{
-												...parsedGradient,
-												colorStops: parsedGradient.colorStops.map(
-													( colorStop, colorStopIndex ) => {
-														if ( colorStopIndex !== index ) {
-															return colorStop;
-														}
-														return {
-															...colorStop,
-															...tinyColorRgbToGradientColorStop( rgb ),
-														};
-													}
-												),
-											}
-										)
+										getGradientWithColorAtIndexChanged( parsedGradient, index, rgb )
 									);
 								} }
 							/>
@@ -183,18 +154,9 @@ export function ControlPoints( {
 								className="components-custom-gradient-picker__remove-control-point"
 								onClick={ () => {
 									onChange(
-										serializeGradient(
-											{
-												...parsedGradient,
-												colorStops: parsedGradient.colorStops.filter( ( elem, elemIndex ) => {
-													return elemIndex !== index;
-												} ),
-											}
-										)
+										getGradientWithControlPointRemoved( parsedGradient, index )
 									);
-									setIsInserterMoveEnabled( true );
-									//setIsEditingColorAtPosition( null );
-									//setInsertPointPosition( null );
+									setIsInsertPointMoveEnabled( true );
 								} }
 								isLink
 							>
@@ -202,12 +164,8 @@ export function ControlPoints( {
 							</Button>
 						</>
 					) }
-					popoverProps={ {
-						className: 'components-custom-gradient-picker__color-picker-popover',
-						position: 'top',
-					} }
+					popoverProps={ COLOR_POPOVER_PROPS }
 				/>
-
 			)
 		)
 	);
