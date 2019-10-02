@@ -27,7 +27,10 @@ function NavigationMenu( {
 	setAttributes,
 } ) {
 	const { navigatorToolbarButton, navigatorModal } = useBlockNavigator( clientId );
-
+	const moverOptions = {
+		position: 'inside',
+		orientation: 'horizontal',
+	};
 	return (
 		<Fragment>
 			<BlockControls>
@@ -53,7 +56,7 @@ function NavigationMenu( {
 			<div className="wp-block-navigation-menu">
 				<InnerBlocks
 					allowedBlocks={ [ 'core/navigation-menu-item' ] }
-					moverOptions
+					moverOptions={ moverOptions }
 				/>
 			</div>
 		</Fragment>
